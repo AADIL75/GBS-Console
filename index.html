@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>ANA GBS Daily Check Sheet</title>
+<style>
+  :root {
+    --navy: #1E2761;
+    --navy-dark: #161C4D;
+    --gold: #C9962B;
+    --ice-tint: #EEF3FD;
+    --white: #FFFFFF;
+    --charcoal: #2B2B2B;
+    --muted: #5B6273;
+    --border: #DADEE8;
+    --success-bg: #E4F3E8;
+    --success-text: #1F7A3D;
+    --danger-bg: #FBE9E9;
+    --danger-text: #B23434;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Calibri, Arial, sans-serif;
+    background: #F5F6FA;
+    color: var(--charcoal);
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding-bottom: 2.5rem; }
+  header {
+    background: var(--navy);
+    color: var(--white);
+    padding: 1.6rem 1.25rem 1.4rem;
+  }
+  header h1 { font-size: 1.35rem; margin: 0 0 0.25rem; font-weight: 700; }
+  header p { margin: 0; font-size: 0.9rem; color: #B9C2E6; }
+
+  section { background: var(--white); margin: 0.75rem; padding: 1.1rem; border-radius: 12px; }
+  section h2 {
+    font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--navy); margin: 0 0 0.9rem; font-weight: 700;
+  }
+
+  .field { margin-bottom: 0.9rem; }
+  .field:last-child { margin-bottom: 0; }
+  label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--charcoal); margin-bottom: 0.35rem; }
+  input[type="text"], input[type="date"], textarea {
+    width: 100%; padding: 0.65rem 0.7rem; font-size: 0.95rem;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--white);
+    font-family: inherit; color: var(--charcoal);
+  }
+  textarea { min-height: 4.5rem; resize: vertical; }
+  input:focus, textarea:focus { outline: none; border-color: var(--navy); }
+
+  .time-row { display: flex; align-items: center; gap: 0.5rem; }
+  .time-row input[type="time"] {
+    flex: 1; padding: 0.65rem 0.7rem; font-size: 0.95rem;
+    border: 1px solid var(--border); border-radius: 8px; font-family: inherit; color: var(--charcoal);
+  }
+  .now-btn {
+    flex-shrink: 0; padding: 0.65rem 0.85rem; font-size: 0.85rem; font-weight: 700;
+    border: none; border-radius: 8px; background: var(--ice-tint); color: var(--navy);
+    cursor: pointer;
+  }
+  .now-btn:active { background: #D9E4F8; }
+
+  .toggle-group { display: flex; gap: 0.5rem; }
+  .toggle-btn {
+    flex: 1; padding: 0.6rem; font-size: 0.9rem; font-weight: 700; text-align: center;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--white); color: var(--muted);
+    cursor: pointer;
+  }
+  .toggle-btn.active { background: var(--navy); color: var(--white); border-color: var(--navy); }
+  .toggle-btn.active.danger { background: #A32D2D; border-color: #A32D2D; }
+
+  .conditional { margin-top: 0.9rem; padding-top: 0.9rem; border-top: 1px solid var(--border); }
+  .hidden { display: none; }
+
+  .submit-btn {
+    width: 100%; padding: 0.95rem; font-size: 1.05rem; font-weight: 700;
+    background: var(--gold); color: var(--white); border: none; border-radius: 10px;
+    margin: 0.9rem 0.75rem 0; cursor: pointer; width: calc(100% - 1.5rem);
+  }
+  .submit-btn:disabled { opacity: 0.6; }
+
+  .status {
+    margin: 0.9rem 0.75rem 0; padding: 0.85rem 1rem; border-radius: 10px; font-size: 0.9rem; font-weight: 600;
+    display: none;
+  }
+  .status.show { display: block; }
+  .status.ok { background: var(--success-bg); color: var(--success-text); }
+  .status.err { background: var(--danger-bg); color: var(--danger-text); }
+  .status.pending { background: var(--ice-tint); color: var(--navy); }
+
+  footer { text-align: center; padding: 1rem; font-size: 0.75rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ANA Daily Check Sheet</h1>
+    <p>Baggage handling report — submit straight from the belt</p>
+  </header>
+
+  <form id="checkForm">
+    <section>
+      <h2>Details</h2>
+      <div class="field">
+        <label for="agent">Agent name</label>
+        <input type="text" id="agent" required>
+      </div>
+      <div class="field">
+        <label for="flight">Flight (optional)</label>
+        <input type="text" id="flight" placeholder="e.g. NH211">
+      </div>
+      <div class="field">
+        <label for="date">Date</label>
+        <input type="date" id="date" required>
+      </div>
+    </section>
+
+    <section>
+      <h2>Baggage arrival times</h2>
+      <div class="field">
+        <label for="blockIn">Block-in time</label>
+        <div class="time-row"><input type="time" id="blockIn"><button type="button" class="now-btn" data-target="blockIn">Now</button></div>
+      </div>
+      <div class="field">
+        <label for="merlinFirst">Merlin first bag</label>
+        <div class="time-row"><input type="time" id="merlinFirst"><button type="button" class="now-btn" data-target="merlinFirst">Now</button></div>
+      </div>
+      <div class="field">
+        <label for="merlinLast">Merlin last bag</label>
+        <div class="time-row"><input type="time" id="merlinLast"><button type="button" class="now-btn" data-target="merlinLast">Now</button></div>
+      </div>
+      <div class="field">
+        <label for="firstCustomer">First customer arrives at carousel</label>
+        <div class="time-row"><input type="time" id="firstCustomer"><button type="button" class="now-btn" data-target="firstCustomer">Now</button></div>
+      </div>
+      <div class="field">
+        <label for="firstClassBag">First class bag — first bag on carousel</label>
+        <div class="time-row"><input type="time" id="firstClassBag"><button type="button" class="now-btn" data-target="firstClassBag">Now</button></div>
+      </div>
+      <div class="field">
+        <label for="priorityBag">Priority bag — first bag on carousel</label>
+        <div class="time-row"><input type="time" id="priorityBag"><button type="button" class="now-btn" data-target="priorityBag">Now</button></div>
+      </div>
+      <div class="field">
+        <label for="lastBagCarousel">Last bag on carousel</label>
+        <div class="time-row"><input type="time" id="lastBagCarousel"><button type="button" class="now-btn" data-target="lastBagCarousel">Now</button></div>
+      </div>
+      <div class="field">
+        <label for="lastBagCollected">Last bag collected</label>
+        <div class="time-row"><input type="time" id="lastBagCollected"><button type="button" class="now-btn" data-target="lastBagCollected">Now</button></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Checks</h2>
+      <div class="field">
+        <label>Delivered per ANA priority policy?</label>
+        <div class="toggle-group" data-group="policyFollowed">
+          <button type="button" class="toggle-btn" data-value="Yes">Yes</button>
+          <button type="button" class="toggle-btn" data-value="No">No</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Co-Mail</label>
+        <div class="toggle-group" data-group="coMail">
+          <button type="button" class="toggle-btn" data-value="Yes">Yes</button>
+          <button type="button" class="toggle-btn" data-value="No">No</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Any failures observed today?</label>
+        <div class="toggle-group" data-group="failuresFlag">
+          <button type="button" class="toggle-btn" data-value="No">No</button>
+          <button type="button" class="toggle-btn" data-value="Yes">Yes</button>
+        </div>
+      </div>
+      <div class="conditional hidden" id="failureDetails">
+        <div class="field">
+          <label for="failureFirstBag">First bag failure</label>
+          <input type="text" id="failureFirstBag" placeholder="Describe what happened">
+        </div>
+        <div class="field">
+          <label for="failureLastBag">Last bag failure</label>
+          <input type="text" id="failureLastBag" placeholder="Describe what happened">
+        </div>
+        <div class="field">
+          <label for="failurePolicy">ANA priority policy failure</label>
+          <input type="text" id="failurePolicy" placeholder="Describe what happened">
+        </div>
+        <div class="field">
+          <label for="failureOther">Any other failure observed</label>
+          <input type="text" id="failureOther" placeholder="Describe what happened">
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Files created</h2>
+      <div class="field">
+        <label for="ahl">AHL</label>
+        <input type="text" id="ahl" placeholder="NA">
+      </div>
+      <div class="field">
+        <label for="dpr">DPR</label>
+        <input type="text" id="dpr" placeholder="NA">
+      </div>
+      <div class="field">
+        <label for="ohd">OHD</label>
+        <input type="text" id="ohd" placeholder="NA">
+      </div>
+    </section>
+
+    <section>
+      <h2>Any other remarks</h2>
+      <div class="field">
+        <textarea id="remarks" placeholder="Optional"></textarea>
+      </div>
+    </section>
+
+    <button type="submit" class="submit-btn" id="submitBtn">Submit report</button>
+    <div class="status" id="statusBox"></div>
+  </form>
+
+  <footer>No login needed &middot; Questions? Ask your supervisor</footer>
+</div>
+
+<script>
+  // ==== CONFIG — fill these in after creating the Google Form (see deployment guide) ====
+  // The form action URL looks like: https://docs.google.com/forms/d/e/FORM_ID/formResponse
+  const FORM_ACTION_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeCBEwHlPoEYkigDrdCAdsJyLJMW4irgmqxM9oB2FxrLvw8wQ/formResponse';
+
+  // Pulled from the "GBS Checklist" form's pre-filled link
+  const ENTRY_IDS = {
+    agent: 'entry.982345877',
+    flight: 'entry.1758728681',
+    date: 'entry.1992549809',
+    blockIn: 'entry.1872155295',
+    merlinFirst: 'entry.120300834',
+    merlinLast: 'entry.1612510896',
+    firstCustomer: 'entry.843581939',
+    firstClassBag: 'entry.1428901555',
+    priorityBag: 'entry.52645987',
+    lastBagCarousel: 'entry.964485748',
+    lastBagCollected: 'entry.1607125686',
+    policyFollowed: 'entry.1185995483',
+    coMail: 'entry.1798546349',
+    failuresFlag: 'entry.810881612',
+    failureFirstBag: 'entry.1036341892',
+    failureLastBag: 'entry.356902710',
+    failurePolicy: 'entry.1677699949',
+    failureOther: 'entry.31280209',
+    ahl: 'entry.939380527',
+    dpr: 'entry.703840807',
+    ohd: 'entry.377079501',
+    remarks: 'entry.241216275',
+  };
+  // ========================================================================================
+
+  const dateInput = document.getElementById('date');
+  const today = new Date();
+  dateInput.value = today.toISOString().slice(0, 10);
+
+  document.querySelectorAll('.now-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = document.getElementById(btn.dataset.target);
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      target.value = hh + ':' + mm;
+    });
+  });
+
+  document.querySelectorAll('.toggle-group').forEach(group => {
+    group.querySelectorAll('.toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        group.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active', 'danger'));
+        btn.classList.add('active');
+        if (group.dataset.group === 'failuresFlag' && btn.dataset.value === 'Yes') {
+          btn.classList.add('danger');
+        }
+        group.dataset.selected = btn.dataset.value;
+        if (group.dataset.group === 'failuresFlag') {
+          const details = document.getElementById('failureDetails');
+          details.classList.toggle('hidden', btn.dataset.value !== 'Yes');
+        }
+      });
+    });
+  });
+
+  function groupValue(name) {
+    const group = document.querySelector('.toggle-group[data-group="' + name + '"]');
+    return group.dataset.selected || '';
+  }
+
+  function val(id) {
+    const v = document.getElementById(id).value.trim();
+    return v.length ? v : 'NA';
+  }
+
+  const form = document.getElementById('checkForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const statusBox = document.getElementById('statusBox');
+
+  function showStatus(kind, text) {
+    statusBox.className = 'status show ' + kind;
+    statusBox.textContent = text;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    if (!document.getElementById('agent').value.trim()) {
+      showStatus('err', 'Please enter the agent name.');
+      return;
+    }
+    if (groupValue('policyFollowed') === '' || groupValue('coMail') === '' || groupValue('failuresFlag') === '') {
+      showStatus('err', 'Please answer Yes/No for all three checks above.');
+      return;
+    }
+
+    const failuresYes = groupValue('failuresFlag') === 'Yes';
+    const values = {
+      agent: document.getElementById('agent').value.trim(),
+      flight: document.getElementById('flight').value.trim(),
+      date: dateInput.value,
+      blockIn: val('blockIn'),
+      merlinFirst: val('merlinFirst'),
+      merlinLast: val('merlinLast'),
+      firstCustomer: val('firstCustomer'),
+      firstClassBag: val('firstClassBag'),
+      priorityBag: val('priorityBag'),
+      lastBagCarousel: val('lastBagCarousel'),
+      lastBagCollected: val('lastBagCollected'),
+      policyFollowed: groupValue('policyFollowed'),
+      coMail: groupValue('coMail'),
+      failuresFlag: groupValue('failuresFlag'),
+      failureFirstBag: failuresYes ? val('failureFirstBag') : 'NA',
+      failureLastBag: failuresYes ? val('failureLastBag') : 'NA',
+      failurePolicy: failuresYes ? val('failurePolicy') : 'NA',
+      failureOther: failuresYes ? val('failureOther') : 'NA',
+      ahl: val('ahl'),
+      dpr: val('dpr'),
+      ohd: val('ohd'),
+      remarks: val('remarks'),
+    };
+
+    // Build the same field=value pairs a real Form submission would send
+    const body = new URLSearchParams();
+    Object.keys(values).forEach(key => {
+      const entryId = ENTRY_IDS[key];
+      if (entryId && !entryId.startsWith('entry.XXXX')) {
+        body.append(entryId, values[key]);
+      }
+    });
+
+    submitBtn.disabled = true;
+    showStatus('pending', 'Submitting…');
+
+    try {
+      // Google's form endpoint doesn't return readable CORS headers, so this is a
+      // fire-and-confirm request: mode 'no-cors' means we can't read success/failure
+      // from the response — a resolved fetch means the request reached Google, which
+      // in practice means the response was recorded.
+      await fetch(FORM_ACTION_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      });
+      showStatus('ok', 'Submitted — report sent and saved.');
+      form.reset();
+      document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active', 'danger'));
+      document.querySelectorAll('.toggle-group').forEach(g => delete g.dataset.selected);
+      document.getElementById('failureDetails').classList.add('hidden');
+      dateInput.value = new Date().toISOString().slice(0, 10);
+    } catch (err) {
+      showStatus('err', 'Could not reach the server. Check your connection and try again, or use the paper sheet.');
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
