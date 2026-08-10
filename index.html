@@ -333,9 +333,18 @@
   };
   // ========================================================================================
 
+  // toISOString() converts to UTC first, which silently shows yesterday's date
+  // for anyone in a timezone ahead of UTC (e.g. UK during BST) in the early hours
+  // of the morning — build the YYYY-MM-DD string from local date parts instead.
+  function localDateStr(d) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return yyyy + '-' + mm + '-' + dd;
+  }
+
   const dateInput = document.getElementById('date');
-  const today = new Date();
-  dateInput.value = today.toISOString().slice(0, 10);
+  dateInput.value = localDateStr(new Date());
 
   // ==== Draft auto-save — survives a locked phone, a closed tab, or a dropped connection.
   // Everything typed is written to this device's local storage as you go, and restored
@@ -470,7 +479,7 @@
     document.querySelectorAll('.toggle-group').forEach(g => delete g.dataset.selected);
     document.getElementById('failureDetails').classList.add('hidden');
     document.getElementById('flight').value = 'NH211';
-    dateInput.value = new Date().toISOString().slice(0, 10);
+    dateInput.value = localDateStr(new Date());
     statusBox.className = 'status';
   });
 
@@ -548,7 +557,7 @@
       document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active', 'danger'));
       document.querySelectorAll('.toggle-group').forEach(g => delete g.dataset.selected);
       document.getElementById('failureDetails').classList.add('hidden');
-      dateInput.value = new Date().toISOString().slice(0, 10);
+      dateInput.value = localDateStr(new Date());
     } catch (err) {
       showStatus('err', 'Could not reach the server. Check your connection and try again, or use the paper sheet.');
     } finally {
