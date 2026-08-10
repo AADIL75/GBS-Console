@@ -527,14 +527,21 @@
     try {
       // Google's form endpoint doesn't return readable CORS headers, so this is a
       // fire-and-confirm request: mode 'no-cors' means we can't read success/failure
-      // from the response — a resolved fetch means the request reached Google, which
-      // in practice means the response was recorded.
-      await fetch(FORM_ACTION_URL, {
+      // from the response. Google's anti-spam layer can also silently drop an
+      // occasional submission here with no client-visible error — so the same
+      // submission is sent twice, ~1 second apart, to make that far less likely
+      // to cost a report. If both copies land, the Apps Script side recognizes
+      // the duplicate and only processes it once, so this never produces two
+      // reports or two sheet writes.
+      const postToForm = () => fetch(FORM_ACTION_URL, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString(),
       });
+      await postToForm();
+      await new Promise(r => setTimeout(r, 1000));
+      await postToForm();
       showStatus('ok', 'Submitted — report sent and saved.');
       clearDraft();
       form.reset();
