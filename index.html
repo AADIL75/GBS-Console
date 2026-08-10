@@ -79,6 +79,7 @@
   .field { margin-bottom: 0.9rem; }
   .field:last-child { margin-bottom: 0; }
   label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--charcoal); margin-bottom: 0.35rem; }
+  label .hint { font-weight: 400; color: var(--muted); }
   input[type="text"], input[type="date"], textarea {
     width: 100%; padding: 0.65rem 0.7rem; font-size: 0.95rem;
     border: 1px solid var(--border); border-radius: 8px; background: var(--white);
@@ -131,6 +132,12 @@
   .status.ok { background: var(--success-bg); color: var(--success-text); }
   .status.err { background: var(--danger-bg); color: var(--danger-text); }
   .status.pending { background: var(--ice-tint); color: var(--navy); }
+
+  .clear-btn {
+    display: block; margin: 0.75rem auto 0; padding: 0.4rem;
+    background: none; border: none; color: var(--muted); font-size: 0.8rem;
+    text-decoration: underline; cursor: pointer;
+  }
 
   footer { text-align: center; padding: 1rem; font-size: 0.75rem; color: var(--muted); }
 
@@ -263,16 +270,16 @@
     <section style="--accent: var(--gold);">
       <h2><span class="icon-badge"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></span><span>Files created</span></h2>
       <div class="field">
-        <label for="ahl">AHL</label>
-        <input type="text" id="ahl" placeholder="NA">
+        <label for="ahl">AHL <span class="hint">(delayed bags)</span></label>
+        <input type="text" id="ahl" placeholder="NA — separate multiple with a comma">
       </div>
       <div class="field">
-        <label for="dpr">DPR</label>
-        <input type="text" id="dpr" placeholder="NA">
+        <label for="dpr">DPR <span class="hint">(damaged bags)</span></label>
+        <input type="text" id="dpr" placeholder="NA — separate multiple with a comma">
       </div>
       <div class="field">
-        <label for="ohd">OHD</label>
-        <input type="text" id="ohd" placeholder="NA">
+        <label for="ohd">OHD <span class="hint">(onhand / unclaimed bags)</span></label>
+        <input type="text" id="ohd" placeholder="NA — separate multiple with a comma">
       </div>
     </section>
 
@@ -288,6 +295,7 @@
       <span>Submit report</span>
     </button>
     <div class="status" id="statusBox"></div>
+    <button type="button" class="clear-btn" id="clearDraftBtn">Clear form &amp; start over</button>
   </form>
 
   <footer>No login needed &middot; Questions? Ask your supervisor</footer>
@@ -329,6 +337,64 @@
   const today = new Date();
   dateInput.value = today.toISOString().slice(0, 10);
 
+  // ==== Draft auto-save — survives a locked phone, a closed tab, or a dropped connection.
+  // Everything typed is written to this device's local storage as you go, and restored
+  // next time the page opens, until the report is submitted or cleared. Nothing leaves
+  // the device — this never touches the network. ====
+  const DRAFT_KEY = 'gbsConsoleDraft';
+  const DRAFT_FIELD_IDS = [
+    'agent', 'flight', 'date', 'blockIn', 'merlinFirst', 'merlinLast', 'firstCustomer',
+    'firstClassBag', 'priorityBag', 'lastBagCarousel', 'lastBagCollected',
+    'ahl', 'dpr', 'ohd', 'remarks',
+    'failureFirstBag', 'failureLastBag', 'failurePolicy', 'failureOther',
+  ];
+
+  function saveDraft() {
+    try {
+      const draft = {};
+      DRAFT_FIELD_IDS.forEach(id => { draft[id] = document.getElementById(id).value; });
+      draft.policyFollowed = groupValue('policyFollowed');
+      draft.coMail = groupValue('coMail');
+      draft.failuresFlag = groupValue('failuresFlag');
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch (e) { /* storage unavailable (e.g. private browsing) — fail silently */ }
+  }
+
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+  }
+
+  function selectToggle(groupName, value) {
+    if (!value) return;
+    const group = document.querySelector('.toggle-group[data-group="' + groupName + '"]');
+    const btn = group.querySelector('.toggle-btn[data-value="' + value + '"]');
+    if (!btn) return;
+    group.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active', 'danger'));
+    btn.classList.add('active');
+    if (groupName === 'failuresFlag' && value === 'Yes') btn.classList.add('danger');
+    group.dataset.selected = value;
+    if (groupName === 'failuresFlag') {
+      document.getElementById('failureDetails').classList.toggle('hidden', value !== 'Yes');
+    }
+  }
+
+  function loadDraft() {
+    let draft;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return false;
+      draft = JSON.parse(raw);
+    } catch (e) { return false; }
+    DRAFT_FIELD_IDS.forEach(id => {
+      if (draft[id]) document.getElementById(id).value = draft[id];
+    });
+    selectToggle('policyFollowed', draft.policyFollowed);
+    selectToggle('coMail', draft.coMail);
+    selectToggle('failuresFlag', draft.failuresFlag);
+    return true;
+  }
+  // ====================================================================================
+
   document.querySelectorAll('.now-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const target = document.getElementById(btn.dataset.target);
@@ -336,6 +402,7 @@
       const hh = String(now.getHours()).padStart(2, '0');
       const mm = String(now.getMinutes()).padStart(2, '0');
       target.value = hh + ':' + mm;
+      saveDraft();
     });
   });
 
@@ -352,6 +419,7 @@
           if (group.dataset.group === 'failuresFlag') {
             document.getElementById('failureDetails').classList.add('hidden');
           }
+          saveDraft();
           return;
         }
 
@@ -364,6 +432,7 @@
           const details = document.getElementById('failureDetails');
           details.classList.toggle('hidden', btn.dataset.value !== 'Yes');
         }
+        saveDraft();
       });
     });
   });
@@ -386,6 +455,24 @@
     statusBox.className = 'status show ' + kind;
     statusBox.textContent = text;
   }
+
+  // Save on every keystroke/selection, and offer to pick a restored draft back up
+  form.addEventListener('input', saveDraft);
+  if (loadDraft()) {
+    showStatus('pending', 'Draft restored from earlier — continue where you left off, or press Clear below to start fresh.');
+  }
+
+  document.getElementById('clearDraftBtn').addEventListener('click', () => {
+    if (!confirm('Clear everything entered so far and start a new report?')) return;
+    clearDraft();
+    form.reset();
+    document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active', 'danger'));
+    document.querySelectorAll('.toggle-group').forEach(g => delete g.dataset.selected);
+    document.getElementById('failureDetails').classList.add('hidden');
+    document.getElementById('flight').value = 'NH211';
+    dateInput.value = new Date().toISOString().slice(0, 10);
+    statusBox.className = 'status';
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -449,6 +536,7 @@
         body: body.toString(),
       });
       showStatus('ok', 'Submitted — report sent and saved.');
+      clearDraft();
       form.reset();
       document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active', 'danger'));
       document.querySelectorAll('.toggle-group').forEach(g => delete g.dataset.selected);
