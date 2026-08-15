@@ -83,9 +83,13 @@
   input[type="text"], input[type="date"], textarea {
     width: 100%; padding: 0.65rem 0.7rem; font-size: 0.95rem;
     border: 1px solid var(--border); border-radius: 8px; background: var(--white);
-    font-family: inherit; color: var(--charcoal);
+    font-family: inherit; color: var(--charcoal); box-sizing: border-box;
   }
   textarea { min-height: 4.5rem; resize: vertical; }
+  /* AHL/DPR/OHD can hold several comma-separated references — a textarea wraps
+     onto extra lines instead of hiding the tail end of what was typed, so the
+     full entry is always visible to check before submitting. */
+  textarea.compact { min-height: 2.7rem; resize: vertical; line-height: 1.35; }
   input:focus, textarea:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(30,39,97,0.1); }
 
   .time-row { display: flex; align-items: center; gap: 0.5rem; }
@@ -327,15 +331,15 @@
       <h2><span class="icon-badge"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></span><span>Files created</span></h2>
       <div class="field">
         <label for="ahl">AHL <span class="hint">(delayed bags)</span></label>
-        <input type="text" id="ahl" placeholder="NA — separate multiple with a comma">
+        <textarea id="ahl" class="compact" rows="1" placeholder="NA — comma-separate multiples"></textarea>
       </div>
       <div class="field">
         <label for="dpr">DPR <span class="hint">(damaged bags)</span></label>
-        <input type="text" id="dpr" placeholder="NA — separate multiple with a comma">
+        <textarea id="dpr" class="compact" rows="1" placeholder="NA — comma-separate multiples"></textarea>
       </div>
       <div class="field">
         <label for="ohd">OHD <span class="hint">(onhand / unclaimed bags)</span></label>
-        <input type="text" id="ohd" placeholder="NA — separate multiple with a comma">
+        <textarea id="ohd" class="compact" rows="1" placeholder="NA — comma-separate multiples"></textarea>
       </div>
     </section>
 
